@@ -12,33 +12,33 @@ input[type="range"] {
         </style>
     </head>
     <body style="margin: 2rem">
-    <label for="cell-s">Cell size:</label>
-    <input type="range" id="cell-s" value="55" step="1" min="1" max="200" oninput="this.nextElementSibling.value = this.value">
-    <output for="room-w">55</output>
-    <br><br>
+        <label for="cell-s">Cell size:</label>
+        <input type="range" id="cell-s" value="55" step="1" min="1" max="200" oninput="this.nextElementSibling.value = this.value">
+        <output for="room-w">55</output>
+        <br><br>
 
-    <label for="room-w">Room width:</label>
-    <input type="range" id="room-w" value="5" step="1" min="3" max="33" oninput="this.nextElementSibling.value = this.value">
-    <output for="room-w">5</output>
-    <br>
-    <label for="room-w">Room height:</label>
-    <input type="range" id="room-h" value="5" step="1" min="3" max="33" oninput="this.nextElementSibling.value = this.value">
-    <output for="room-h">5</output>
-    <br>
+        <label for="room-w">Room width:</label>
+        <input type="range" id="room-w" value="5" step="1" min="3" max="33" oninput="this.nextElementSibling.value = this.value">
+        <output for="room-w">5</output>
+        <br>
+        <label for="room-w">Room height:</label>
+        <input type="range" id="room-h" value="5" step="1" min="3" max="33" oninput="this.nextElementSibling.value = this.value">
+        <output for="room-h">5</output>
+        <br>
 
-    Grid cell type:<br>
-    <input type="radio" name="cell-type" value="0"> Empty<br>
-    <input type="radio" name="cell-type" value="1" checked> Wall<br>
-    <input type="radio" name="cell-type" value="2"> Door<br>
-    <br>
+        Grid cell type:<br>
+        <input type="radio" name="cell-type" value="0"> Empty<br>
+        <input type="radio" name="cell-type" value="1" checked> Wall<br>
+        <input type="radio" name="cell-type" value="2"> Door<br>
+        <br>
 
-    <button id="robot-beg" >&lt;&lt;</button>
-    <button id="robot-prev">&lt;</button>
-    <button id="robot-next">&gt;</button>
-    <button id="robot-end" >&gt;&gt;</button>
-    <br>
-    <br>
+        <button id="robot-beg" >&lt;&lt;</button>
+        <button id="robot-prev">&lt;</button>
+        <button id="robot-next">&gt;</button>
+        <button id="robot-end" >&gt;&gt;</button>
+        <br>
+        <br>
 
-    <canvas id="room-canvas"></canvas>
+        <canvas id="room-canvas"></canvas>
     </body>
 </html>

@@ -1,3 +1,7 @@
+const roomEmpty = 0;
+const roomWall = 1;
+const roomDoor = 2;
+
 const roomCanvas = document.getElementById('room-canvas');
 const context = roomCanvas.getContext('2d');
 
@@ -6,36 +10,26 @@ const size = { w: 0, h: 0 };
 var room = [];
 const doorPos = { x: 0, y: 1 };
 
-const roomEmpty = 0;
-const roomWall = 1;
-const roomDoor = 2;
+const robotHistory = [];
+var robotPosI = 0;
+var algorithm;
 
-//https://stackoverflow.com/a/42769683/18704284
 var squareSize;
 
-{
+/*init size sliders*/ {
     const roomW = document.getElementById('room-w');
     const roomH = document.getElementById('room-h');
     const cellS = document.getElementById('cell-s');
     size.w = Number(roomW.value);
     size.h = Number(roomH.value);
-    squareSize = Number(cellS.value)
+    squareSize = Number(cellS.value);
 
     roomW.addEventListener('change', () => { size.w = Number(roomW.value); updateRoomCanvas() });
     roomH.addEventListener('change', () => { size.h = Number(roomH.value); updateRoomCanvas() });
     cellS.addEventListener('change', () => { squareSize = Number(cellS.value); updateRoomCanvas() });
 }
 
-const robotHistory = [];
-var robotPosI = 0;
-var algorithm;
-
-{
-    const beg  = document.getElementById('robot-beg' );
-    const prev = document.getElementById('robot-prev');
-    const next = document.getElementById('robot-next');
-    const end  = document.getElementById('robot-end' );
-
+/*init step buttons*/ {
     const toBeg = () => {
         robotPosI = 0;
         updateRoomCanvas();
@@ -57,6 +51,11 @@ var algorithm;
         updateRoomCanvas();
     };
 
+    const beg  = document.getElementById('robot-beg' );
+    const prev = document.getElementById('robot-prev');
+    const next = document.getElementById('robot-next');
+    const end  = document.getElementById('robot-end' );
+
     beg.addEventListener('click', toBeg);
     prev.addEventListener('click', toPrev);
     next.addEventListener('click', toNext);
@@ -72,11 +71,7 @@ var algorithm;
     });
 }
 
-
-updateRoomCanvas();
-
 function moveNextState() {
-    console.log(robotPosI, robotHistory.length);
     if(robotPosI+1 < robotHistory.length) {
         robotPosI++;
         return true;
@@ -91,19 +86,21 @@ function moveNextState() {
 }
 
 function* robotAlgorithm(x, y, cellAt) {
-    yield { x, y };
-
     var dir = 0;
-    const dirOffsets = [ 0,-1, 1,0, 0,1, -1,0 ];
+
+    const turnUp = function*() { dir = 0; /*yield { x, y, dir }*/ };
     const turn90 = function*() { dir = dir === 3 ? 0 : dir+1; /*yield { x, y, dir }*/ }; //clockwise
     const turn_90 = function*() { dir = dir === 0 ? 3 : dir-1; /*yield { x, y, dir }*/ }; //counterclockwise
+
+    const dirOffsets = [ 0,-1, 1,0, 0,1, -1,0 ];
     const checkFront = () => cellAt(x + dirOffsets[dir*2], y + dirOffsets[dir*2+1]); 
-    const moveFront = function() { x += dirOffsets[dir*2]; y += dirOffsets[dir*2+1]; return { x, y, dir } };
+    const moveFront = () => { x += dirOffsets[dir*2]; y += dirOffsets[dir*2+1]; return { x, y, dir } };
+
+    yield { x, y };
 
     while(true) {
         //find wall above
-        dir = 0;
-        yield { x, y, dir };
+        turnUp();
         while(true) {
             const above = checkFront();
             if(above === roomDoor) { yield moveFront(); return }
@@ -113,9 +110,10 @@ function* robotAlgorithm(x, y, cellAt) {
 
         yield *turn90();
 
-        var minY = y, minYX = x, minYDir = dir;
+        var minY = y, minYX = x, minYDir = dir; //note: 'highest' position on screen is 0
         var different = false;
 
+        //loop around the walls and stop at highest position
         while(!(different && minY === y && minYX === x && minYDir === dir)) {
             different = false;
 
@@ -144,22 +142,19 @@ function* robotAlgorithm(x, y, cellAt) {
     }
 }
 
+//draw on the grid
 roomCanvas.addEventListener('mouseup', function(e) {
     const rect = roomCanvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     updateCell(Math.floor(x/squareSize), Math.floor(y/squareSize), getCellType());
-})
-
+});
 function getCellType() {
     const radioButtons = document.getElementsByName("cell-type");
     for(let i = 0; i < radioButtons.length; i++) {
-        if(radioButtons[i].checked) {
-            return Number(radioButtons[i].value);
-        }
+        if(radioButtons[i].checked) return Number(radioButtons[i].value);
     }
 }
-
 function updateCell(x, y, cellType) {
     if(cellType == roomDoor) {
         room[doorPos.y*size.w+doorPos.x] = roomWall;
@@ -167,9 +162,7 @@ function updateCell(x, y, cellType) {
         doorPos.x = x;
         doorPos.y = y;
     }
-    else {
-        room[y*size.w+x] = cellType;
-    }
+    else room[y*size.w+x] = cellType; //fix doorPos is door was replaced?
 
     updateRoomCanvas();
 }
@@ -182,31 +175,27 @@ function updateRoomCanvas() {
     roomCanvas.width = w * squareSize;
     roomCanvas.height = h * squareSize;
 
+    context.fillStyle = 'white';
+    context.clearRect(0, 0, roomCanvas.width, roomCanvas.height);
+
     // context.strokeStyle = 'red';
     // context.strokeWidth = 2;
 
-    context.fillStyle = 'white';
-    context.clearRect(0, 0, roomCanvas.width, roomCanvas.height);
-    for (var j = 0; j < h; j++) {
-        for (var i = 0; i < w; i++) {
-            var x = i * squareSize;
-            var y = j * squareSize;
+    //draw grid
+    for(var j = 0; j < h; j++)
+    for(var i = 0; i < w; i++) {
+        var x = i * squareSize;
+        var y = j * squareSize;
 
-            const cell = room[j*w+i];
-            if(cell === roomWall) {
-                context.fillStyle = "green";
-            }
-            else if(cell === roomDoor) {
-                context.fillStyle = "blue";
-            }
-            else continue;
+        const cell = room[j*w+i];
+        if(cell === roomWall) context.fillStyle = "green";
+        else if(cell === roomDoor) context.fillStyle = "blue";
+        else continue;
 
-            context.fillRect(x, y, squareSize, squareSize);
-            // context.strokeRect(x, y, squareSize, squareSize);
-        }
+        context.fillRect(x, y, squareSize, squareSize);
     }
 
-    {
+    /*draw robot*/ {
         const pos = robotHistory[robotPosI];
         const x = pos.x * squareSize, y = pos.y * squareSize;
         const dir = pos.dir;
@@ -227,8 +216,6 @@ function updateRoomCanvas() {
     }
 }
 
-function clamp(num, a, b) { return Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b)); }
-
 function resizeBoard(newW, newH) {
     const prevW = prevSize.w, prevH = prevSize.h;
     const newRoom = Array(newW * newH);
@@ -237,15 +224,18 @@ function resizeBoard(newW, newH) {
     const minW = Math.min(prevW, newW);
     const minH = Math.min(prevH, newH);
 
+    //copy room without outer walls
     for(var y = 1; y < minH-1; y++)
     for(var x = 1; x < minW-1; x++) {
         newRoom[y*newW+x] = room[y*prevW+x];
     }
 
+    //add outer walls
     for(let x = 0; x < newW; x++) newRoom[x] = newRoom[(newH-1)*newW+x] = roomWall;
     for(let y = 0; y < newH; y++) newRoom[y*newW] = newRoom[y*newW+newW-1] = roomWall;
 
-
+    //move door
+    function clamp(num, a, b) { return Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b)); }
     const newDoorX = clamp(doorPos.x, 0, newH);
     const newDoorY = clamp(doorPos.y, 0, newW);
 
@@ -253,21 +243,19 @@ function resizeBoard(newW, newH) {
     doorPos.y = newDoorY;
 
     newRoom[newDoorY*newW+newDoorX] = roomDoor;
-    room = newRoom;
 
     prevSize.w = newW;
     prevSize.h = newH;
+    room = newRoom;
 
-    resetRobot(newW, newH);
+    /*reset robot*/ {
+        const w = newW, h = newH;
+        algorithm = robotAlgorithm(Math.floor(w/2), Math.floor(h/2), (x, y) => room[y*w+x] ?? roomWall);
+        robotHistory.length = 0;
+        robotHistory.push(algorithm.next().value);
+        robotPosI = 0;
+    }
 }
 
-function resetRobot(w, h) {
-    robotHistory.length = 0;
-    algorithm = robotAlgorithm(Math.floor(w/2), Math.floor(h/2), (x, y) => room[y*w+x] ?? roomWall);
-    robotHistory.push(algorithm.next().value);
-    robotPosI = 0;
-}
 
-
-
-
+updateRoomCanvas();
