@@ -11,17 +11,19 @@ const roomWall = 1;
 const roomDoor = 2;
 
 //https://stackoverflow.com/a/42769683/18704284
-const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)// doesn't recalculate when font size changes :/
-const squareSize = 3 * rem;
+var squareSize;
 
 {
     const roomW = document.getElementById('room-w');
     const roomH = document.getElementById('room-h');
+    const cellS = document.getElementById('cell-s');
     size.w = Number(roomW.value);
     size.h = Number(roomH.value);
+    squareSize = Number(cellS.value)
 
-    roomW.addEventListener('change', () => { size.w = Number(roomW.value); updateRoomCanvas() })
-    roomH.addEventListener('change', () => { size.h = Number(roomH.value); updateRoomCanvas() })
+    roomW.addEventListener('change', () => { size.w = Number(roomW.value); updateRoomCanvas() });
+    roomH.addEventListener('change', () => { size.h = Number(roomH.value); updateRoomCanvas() });
+    cellS.addEventListener('change', () => { squareSize = Number(cellS.value); updateRoomCanvas() });
 }
 
 const robotHistory = [];
@@ -34,25 +36,39 @@ var algorithm;
     const next = document.getElementById('robot-next');
     const end  = document.getElementById('robot-end' );
 
-    beg.addEventListener('click', () => {
+    const toBeg = () => {
         robotPosI = 0;
         updateRoomCanvas();
-    });
-    prev.addEventListener('click', () => {
+    };
+    const toPrev = () => {
         if(robotPosI === 0) return;
         robotPosI--;
         updateRoomCanvas();
-    });
-    next.addEventListener('click', () => {
+    };
+    const toNext = () => {
         moveNextState();
         updateRoomCanvas();
-    });
-    end.addEventListener('click', () => {
+    };
+    const toEnd = () => {
         robotPosI = robotHistory.length-1;
         let i = 0;
         while(i < 10000 && moveNextState()) i++;
         if(i === 10000) console.error('too much iterations');
         updateRoomCanvas();
+    };
+
+    beg.addEventListener('click', toBeg);
+    prev.addEventListener('click', toPrev);
+    next.addEventListener('click', toNext);
+    end.addEventListener('click', toEnd);
+
+    //source: google AI
+    window.addEventListener("keydown", function(event) {
+        var key = event.keyCode;
+        if(key === 37) toPrev(); //left arrow
+        else if(key === 38) toEnd(); //up arrow
+        else if(key === 39) toNext(); //right arrow
+        else if(key === 40) toBeg(); //down arrow
     });
 }
 
@@ -60,7 +76,8 @@ var algorithm;
 updateRoomCanvas();
 
 function moveNextState() {
-    if(robotPosI+1 < robotHistory.length-1) {
+    console.log(robotPosI, robotHistory.length);
+    if(robotPosI+1 < robotHistory.length) {
         robotPosI++;
         return true;
     }
@@ -75,9 +92,55 @@ function moveNextState() {
 
 function* robotAlgorithm(x, y, cellAt) {
     yield { x, y };
-    while(cellAt(x, y-1) === roomEmpty) {
-        y--
-        yield { x, y };
+
+    var dir = 0;
+    const dirOffsets = [ 0,-1, 1,0, 0,1, -1,0 ];
+    const turn90 = function*() { dir = dir === 3 ? 0 : dir+1; /*yield { x, y, dir }*/ }; //clockwise
+    const turn_90 = function*() { dir = dir === 0 ? 3 : dir-1; /*yield { x, y, dir }*/ }; //counterclockwise
+    const checkFront = () => cellAt(x + dirOffsets[dir*2], y + dirOffsets[dir*2+1]); 
+    const moveFront = function() { x += dirOffsets[dir*2]; y += dirOffsets[dir*2+1]; return { x, y, dir } };
+
+    while(true) {
+        //find wall above
+        dir = 0;
+        yield { x, y, dir };
+        while(true) {
+            const above = checkFront();
+            if(above === roomDoor) { yield moveFront(); return }
+            else if(above === roomEmpty) yield moveFront();
+            else break;
+        }
+
+        yield *turn90();
+
+        var minY = y, minYX = x, minYDir = dir;
+        var different = false;
+
+        while(!(different && minY === y && minYX === x && minYDir === dir)) {
+            different = false;
+
+            if(y < minY) {
+                minY = y;
+                minYX = x;
+                minYDir = dir;
+            }
+
+            const side = checkFront();
+            if(side === roomDoor) { yield moveFront(); return }
+            else if(side == roomEmpty) {
+                yield moveFront();
+                different = true;
+                yield *turn_90();
+                const angle = checkFront();
+                if(angle === roomDoor) { yield moveFront(); return }
+                else if(angle === roomEmpty) {
+                    yield moveFront();
+                    different = true;
+                }
+                else yield *turn90();
+            }
+            else yield *turn90();
+        }
     }
 }
 
@@ -98,7 +161,6 @@ function getCellType() {
 }
 
 function updateCell(x, y, cellType) {
-    console.log(x, y, cellType);
     if(cellType == roomDoor) {
         room[doorPos.y*size.w+doorPos.x] = roomWall;
         room[y*size.w+x] = roomDoor;
@@ -108,6 +170,7 @@ function updateCell(x, y, cellType) {
     else {
         room[y*size.w+x] = cellType;
     }
+
     updateRoomCanvas();
 }
 
@@ -146,12 +209,21 @@ function updateRoomCanvas() {
     {
         const pos = robotHistory[robotPosI];
         const x = pos.x * squareSize, y = pos.y * squareSize;
+        const dir = pos.dir;
         const r = squareSize*0.5;
 
         context.fillStyle = 'red';
         context.beginPath();
         context.arc(x+r, y+r, r, 0, 2 * Math.PI);
         context.fill();
+        context.fillStyle = 'orange';
+
+        context.save();
+        context.translate(x+r, y+r);
+        context.rotate(dir * Math.PI*0.5);
+        const width = r*0.1;
+        context.fillRect(-width*0.5, 0, width, -r);
+        context.restore();
     }
 }
 
