@@ -11,9 +11,39 @@ const roomWall = 1;
 const roomDoor = 2;
 
 //https://stackoverflow.com/a/42769683/18704284
-const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)// doesn't recalculate when font size shanges :/
+const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)// doesn't recalculate when font size changes :/
 const squareSize = 3 * rem;
 
+
+roomCanvas.addEventListener('mouseup', function(e) {
+    const rect = roomCanvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    updateCell(Math.floor(x/squareSize), Math.floor(y/squareSize), getCellType());
+})
+
+function getCellType() {
+    const radioButtons = document.getElementsByName("cell-type");
+    for(let i = 0; i < radioButtons.length; i++) {
+        if(radioButtons[i].checked) {
+            return Number(radioButtons[i].value);
+        }
+    }
+}
+
+function updateCell(x, y, cellType) {
+    console.log(x, y, cellType);
+    if(cellType == roomDoor) {
+        room[doorPos.y*size.w+doorPos.x] = roomWall;
+        room[y*size.w+x] = roomDoor;
+        doorPos.x = x;
+        doorPos.y = y;
+    }
+    else {
+        room[y*size.w+x] = cellType;
+    }
+    updateRoomCanvas();
+}
 
 {
     const roomW = document.getElementById('room-w');
@@ -30,7 +60,7 @@ const squareSize = 3 * rem;
 function updateRoomCanvas() {
     const { w, h } = size;
 
-    resizeBoard(w, h);
+    if(prevSize.w !== w || prevSize.h !== h) resizeBoard(w, h);
 
     roomCanvas.width = w * squareSize;
     roomCanvas.height = h * squareSize;
@@ -46,7 +76,6 @@ function updateRoomCanvas() {
             var y = j * squareSize;
 
             const cell = room[j*w+i];
-            console.log(cell);
             if(cell === roomWall) {
                 context.fillStyle = "green";
             }
