@@ -250,7 +250,10 @@ function resizeBoard(newW, newH) {
 
     /*reset robot*/ {
         const w = newW, h = newH;
-        algorithm = robotAlgorithm(Math.floor(w/2), Math.floor(h/2), (x, y) => room[y*w+x] ?? roomWall);
+        algorithm = robotAlgorithm(Math.floor(w/2), Math.floor(h/2), (x, y) => {
+            if(x >= 0 && x < w && y >= 0 && y < h) return room[y*w+x];
+            else return roomWall;
+        });
         robotHistory.length = 0;
         robotHistory.push(algorithm.next().value);
         robotPosI = 0;
